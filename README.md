@@ -1,1 +1,1 @@
-# next-gen-neo-banking-ux
+# Customer Churn Prediction & Lifetime Value (LTV) Engine
