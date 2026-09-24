@@ -1,14 +1,16 @@
 """
 Customer Churn Dataset Preprocessing
 
-Loads the Telco Customer Churn dataset, cleans the data,
-encodes categorical variables, and prepares features for
-machine-learning models.
+Loads the Telco Customer Churn dataset, applies the canonical
+data-cleaning logic, converts the churn target to binary format,
+and prepares an encoded dataset for machine-learning models.
 """
 
 from pathlib import Path
 
 import pandas as pd
+
+from src.data_cleaning import clean_data
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -23,21 +25,17 @@ def load_data() -> pd.DataFrame:
     return pd.read_csv(DATA_PATH)
 
 
-def clean_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Clean missing values and prepare the target column."""
+def prepare_target(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert the Churn target from Yes/No to 1/0."""
     df = df.copy()
 
-    # TotalCharges contains blank strings in some records.
-    df["TotalCharges"] = pd.to_numeric(
-        df["TotalCharges"],
-        errors="coerce",
-    )
+    if "Churn" not in df.columns:
+        raise ValueError("Expected 'Churn' column was not found.")
 
-    # Remove rows where the target or important numeric field is missing.
-    df = df.dropna(subset=["Churn", "TotalCharges"])
-
-    # Convert target to binary format.
     df["Churn"] = df["Churn"].map({"Yes": 1, "No": 0})
+
+    if df["Churn"].isna().any():
+        raise ValueError("Unexpected values found in Churn column.")
 
     return df
 
@@ -46,14 +44,12 @@ def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
     """Encode categorical features for machine-learning models."""
     df = df.copy()
 
-    # CustomerID is an identifier, not a predictive feature.
     if "customerID" in df.columns:
         df = df.drop(columns=["customerID"])
 
-    # Convert categorical columns using one-hot encoding.
     categorical_columns = df.select_dtypes(
-    include=["object", "str"]
-).columns
+        include=["object", "str"]
+    ).columns
 
     df = pd.get_dummies(
         df,
@@ -66,9 +62,10 @@ def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def preprocess_data() -> pd.DataFrame:
-    """Run the complete preprocessing pipeline."""
+    """Run the complete canonical preprocessing pipeline."""
     df = load_data()
     df = clean_data(df)
+    df = prepare_target(df)
     df = prepare_features(df)
 
     return df
@@ -80,5 +77,9 @@ if __name__ == "__main__":
     print("Preprocessing completed successfully.")
     print(f"Rows: {processed_df.shape[0]}")
     print(f"Columns: {processed_df.shape[1]}")
+
+    print("\nTarget distribution:")
+    print(processed_df["Churn"].value_counts())
+
     print("\nFirst 5 rows:")
     print(processed_df.head())
