@@ -91,3 +91,36 @@ def validate_data(df):
         return False
 
     return True
+def validate_input(data):
+    """
+    Validate incoming customer data.
+    """
+
+    required_fields = [
+        "customerID",
+        "tenure",
+        "MonthlyCharges",
+        "SeniorCitizen"
+    ]
+
+    # Check required fields
+    for field in required_fields:
+        if field not in data:
+            return False
+
+    # Check missing values
+    for field in required_fields:
+        if pd.isna(data[field]):
+            return False
+
+    # Check valid values
+    if data["tenure"] < 0:
+        return False
+
+    if data["MonthlyCharges"] < 0:
+        return False
+
+    if data["SeniorCitizen"] not in [0, 1]:
+        return False
+
+    return True
