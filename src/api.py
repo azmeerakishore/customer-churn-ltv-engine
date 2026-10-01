@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from pydantic import ValidationError
 
 from src.models.predict import (
     AVAILABLE_MODELS,
@@ -21,6 +22,7 @@ from src.models.predict import (
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = PROJECT_ROOT / "web"
 MAX_CSV_BYTES = 10 * 1024 * 1024
+MAX_CUSTOMERS = 1000
 
 app = FastAPI(
     title="Customer Churn & Revenue Risk API",
@@ -34,7 +36,10 @@ app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
 
 class ScoreRequest(BaseModel):
-    customers: list[dict[str, Any]] = Field(min_length=1)
+    customers: list[dict[str, Any]] = Field(
+        min_length=1,
+        max_length=MAX_CUSTOMERS,
+    )
     horizon_months: int = Field(
         default=DEFAULT_HORIZON_MONTHS,
         ge=1,
@@ -58,6 +63,18 @@ def _result_payload(results: pd.DataFrame) -> dict[str, Any]:
         "total_revenue_at_risk": float(results["revenue_at_risk"].sum()),
         "records": records,
     }
+
+
+async def _read_limited_body(request: Request) -> bytes:
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > MAX_CSV_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail="Request body exceeds 10 MB.",
+            )
+    return bytes(body)
 
 
 def _score(customers: pd.DataFrame, horizon_months: int, model_name: str):
@@ -147,10 +164,32 @@ def input_schema():
     }
 
 
-@app.post("/api/score")
-def score(request: ScoreRequest):
-    customers = pd.DataFrame(request.customers)
-    return _score(customers, request.horizon_months, request.model_name)
+@app.post(
+    "/api/score",
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": ScoreRequest.model_json_schema(),
+                }
+            },
+        }
+    },
+)
+async def score(request: Request):
+    body = await _read_limited_body(request)
+    try:
+        score_request = ScoreRequest.model_validate_json(body)
+    except ValidationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+    customers = pd.DataFrame(score_request.customers)
+    return _score(
+        customers,
+        score_request.horizon_months,
+        score_request.model_name,
+    )
 
 
 @app.post("/api/score-csv")
@@ -162,7 +201,7 @@ async def score_csv(
     if model_name not in AVAILABLE_MODELS:
         raise HTTPException(status_code=422, detail="Unknown model name.")
 
-    body = await request.body()
+    body = await _read_limited_body(request)
     if not body:
         raise HTTPException(status_code=422, detail="CSV file is empty.")
     if len(body) > MAX_CSV_BYTES:
@@ -179,4 +218,9 @@ async def score_csv(
             status_code=422,
             detail="Could not parse the uploaded file as CSV.",
         ) from error
+    if len(customers) > MAX_CUSTOMERS:
+        raise HTTPException(
+            status_code=413,
+            detail=f"CSV batch exceeds the {MAX_CUSTOMERS}-customer limit.",
+        )
     return _score(customers, horizon_months, model_name)

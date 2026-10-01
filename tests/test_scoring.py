@@ -157,3 +157,39 @@ def test_empty_csv_is_rejected():
     )
 
     assert response.status_code == 422
+
+
+def test_json_api_rejects_batches_above_customer_limit():
+    response = api_request(
+        "POST",
+        "/api/score",
+        json={"customers": [{}] * (api.MAX_CUSTOMERS + 1)},
+    )
+
+    assert response.status_code == 422
+
+
+def test_csv_api_rejects_oversized_request_body():
+    response = api_request(
+        "POST",
+        "/api/score-csv",
+        content=b"x" * (api.MAX_CSV_BYTES + 1),
+        headers={"Content-Type": "text/csv"},
+    )
+
+    assert response.status_code == 413
+
+
+def test_csv_api_rejects_batches_above_customer_limit():
+    customer = load_data().head(1).drop(columns="Churn")
+    customers = pd.concat([customer] * (api.MAX_CUSTOMERS + 1), ignore_index=True)
+    csv_content = customers.to_csv(index=False)
+
+    response = api_request(
+        "POST",
+        "/api/score-csv",
+        content=csv_content,
+        headers={"Content-Type": "text/csv"},
+    )
+
+    assert response.status_code == 413

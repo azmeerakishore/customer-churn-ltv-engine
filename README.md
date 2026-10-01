@@ -36,7 +36,7 @@ Training writes model files under `models/`. They are gitignored because they ca
 2. Enter a customer profile and choose **Score customer**, or select a CSV with the source dataset's feature columns.
 3. Review churn probability, risk category, monthly charges, and estimated revenue at risk.
 
-The raw CSV in `data/WA_Fn-UseC_-Telco-Customer-Churn.csv` is available for a portfolio demonstration. The `Churn` target column is ignored during scoring; `customerID` is optional. Uploads are limited to 10 MB and are processed in memory.
+The raw CSV in `data/WA_Fn-UseC_-Telco-Customer-Churn.csv` is available for a portfolio demonstration. The `Churn` target column is ignored during scoring; `customerID` is optional. Scoring request bodies are limited to 10 MB and batches to 1,000 customers.
 
 ## API
 
@@ -91,6 +91,10 @@ docker run --rm -p 8000:8000 customer-churn-ltv-engine
 ```
 
 The container installs the declared dependencies, trains the baseline models from the included dataset, and serves the dashboard/API on port 8000 (or the `PORT` environment variable). This repository contains deployment configuration only; it has not been deployed to a hosting provider.
+
+### Deploying To Render
+
+The repository includes a Render Blueprint in `render.yaml`. To create the service, sign in to Render, choose **New + → Blueprint**, connect this GitHub repository, and deploy the `kishore-development` branch. Render builds the Docker image, trains the baseline artifacts during the image build, and checks `/health` after startup. The first build can take several minutes. A successful configuration does not mean the service is deployed; verify the service status and open the Render-provided URL after deployment.
 
 ## Limitations
 
