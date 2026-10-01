@@ -96,6 +96,10 @@ The container installs the declared dependencies, trains the baseline models fro
 
 The repository includes a Render Blueprint in `render.yaml`. To create the service, sign in to Render, choose **New + → Blueprint**, connect this GitHub repository, and deploy the `kishore-development` branch. Render builds the Docker image, trains the baseline artifacts during the image build, and checks `/health` after startup. The first build can take several minutes. A successful configuration does not mean the service is deployed; verify the service status and open the Render-provided URL after deployment.
 
+### Deploying The Dashboard To GitHub Pages
+
+The workflow in `.github/workflows/pages.yml` publishes only `web/` when changes reach `main`. In the repository's **Settings → Pages**, set the build and deployment source to **GitHub Actions**. Merge the dashboard changes into `main` to trigger the workflow; the expected project URL is `https://azmeerakishore.github.io/customer-churn-ltv-engine/`. The static app calls the Render URL configured in `web/app.js`, and the API allows the GitHub Pages origin through CORS. If Render assigns a different service URL, update `API_BASE_URL` in `web/app.js` and the docs link in `web/index.html` to match before publishing.
+
 ## Limitations
 
 - The source dataset is a static, historical telco sample; model scores should not be treated as production decisions without external validation.

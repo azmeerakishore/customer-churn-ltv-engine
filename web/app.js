@@ -1,7 +1,12 @@
 const PAGE_SIZE = 25;
+const API_BASE_URL = 'https://customer-churn-ltv-engine.onrender.com';
 let schema;
 let scoredRecords = [];
 let currentPage = 0;
+
+function apiUrl(path) {
+  return `${API_BASE_URL}${path}`;
+}
 
 const elements = {
   activeModel: document.querySelector('#active-model-label'),
@@ -104,7 +109,7 @@ async function parseResponse(response) {
 }
 
 async function scoreProfile(customer) {
-  const response = await fetch('/api/score', {
+  const response = await fetch(apiUrl('/api/score'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -121,7 +126,7 @@ async function scoreCsv(file) {
     model_name: elements.model.value,
     horizon_months: elements.horizon.value,
   });
-  const response = await fetch(`/api/score-csv?${query}`, {
+  const response = await fetch(`${apiUrl('/api/score-csv')}?${query}`, {
     method: 'POST',
     headers: { 'Content-Type': 'text/csv' },
     body: file,
@@ -202,8 +207,8 @@ function renderPage() {
 async function initialize() {
   try {
     const [schemaResponse, healthResponse] = await Promise.all([
-      fetch('/api/schema'),
-      fetch('/health'),
+      fetch(apiUrl('/api/schema')),
+      fetch(apiUrl('/health')),
     ]);
     schema = await parseResponse(schemaResponse);
     const health = await parseResponse(healthResponse);

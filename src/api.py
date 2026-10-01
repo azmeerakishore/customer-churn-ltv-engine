@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -31,6 +32,15 @@ app = FastAPI(
         "over a selected planning horizon."
     ),
     version="1.0.0",
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://azmeerakishore.github.io",
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
@@ -224,3 +234,6 @@ async def score_csv(
             detail=f"CSV batch exceeds the {MAX_CUSTOMERS}-customer limit.",
         )
     return _score(customers, horizon_months, model_name)
+
+
+app.mount("/", StaticFiles(directory=WEB_DIR), name="web")

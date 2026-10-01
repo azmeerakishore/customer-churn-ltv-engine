@@ -193,3 +193,26 @@ def test_csv_api_rejects_batches_above_customer_limit():
     )
 
     assert response.status_code == 413
+
+
+def test_pages_origin_cors_preflight_is_allowed():
+    response = api_request(
+        "OPTIONS",
+        "/api/score",
+        headers={
+            "Origin": "https://azmeerakishore.github.io",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == (
+        "https://azmeerakishore.github.io"
+    )
+
+
+def test_relative_dashboard_assets_are_served_by_fastapi():
+    for path in ("/", "/styles.css", "/app.js"):
+        response = api_request("GET", path)
+        assert response.status_code == 200
