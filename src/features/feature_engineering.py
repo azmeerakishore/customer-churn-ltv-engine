@@ -5,7 +5,8 @@ from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from src.preprocessing.preprocess import clean_data, load_data
+from src.data_cleaning import clean_data
+from src.preprocessing.preprocess import load_data
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -15,9 +16,28 @@ TEST_SIZE = 0.20
 
 
 def prepare_dataset():
-    """Load and clean the Telco churn dataset."""
+    """Load, clean, and prepare the Telco churn dataset."""
+
     df = load_data()
+
+    # Use the project's canonical cleaning pipeline.
     df = clean_data(df)
+
+    # Convert the target from Yes/No to 1/0.
+    if "Churn" not in df.columns:
+        raise ValueError("Expected 'Churn' column was not found.")
+
+    df["Churn"] = df["Churn"].map(
+        {
+            "Yes": 1,
+            "No": 0,
+        }
+    )
+
+    if df["Churn"].isna().any():
+        raise ValueError(
+            "Unexpected values found in the Churn column."
+        )
 
     # Remove customer ID because it is not a predictive feature.
     if "customerID" in df.columns:
@@ -104,6 +124,7 @@ def create_train_test_data():
 
 
 if __name__ == "__main__":
+
     (
         X_train,
         X_test,
