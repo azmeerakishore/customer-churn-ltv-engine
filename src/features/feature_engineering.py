@@ -1,94 +1,146 @@
+﻿from pathlib import Path
+
 import pandas as pd
+from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+from src.data_cleaning import clean_data
+from src.preprocessing.preprocess import load_data
 
 
-def create_features(df):
-    """Create features for churn prediction."""
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-    df = df.copy()
-    df["TotalCharges"] = pd.to_numeric(
-        df["TotalCharges"],
-        errors="coerce"
+RANDOM_STATE = 42
+TEST_SIZE = 0.20
+
+
+def prepare_dataset():
+    """Load, clean, and prepare the Telco churn dataset."""
+
+    df = load_data()
+
+    # Use the project's canonical cleaning pipeline.
+    df = clean_data(df)
+
+    # Convert the target from Yes/No to 1/0.
+    if "Churn" not in df.columns:
+        raise ValueError("Expected 'Churn' column was not found.")
+
+    df["Churn"] = df["Churn"].map(
+        {
+            "Yes": 1,
+            "No": 0,
+        }
     )
 
-    df["TotalCharges"] = df["TotalCharges"].fillna(0)
+    if df["Churn"].isna().any():
+        raise ValueError(
+            "Unexpected values found in the Churn column."
+        )
 
-    df["AverageMonthlyRevenue"] = (
-        df["TotalCharges"] /
-        df["tenure"].replace(0, 1)
+    # Remove customer ID because it is not a predictive feature.
+    if "customerID" in df.columns:
+        df = df.drop(columns=["customerID"])
+
+    # Separate target from input features.
+    X = df.drop(columns=["Churn"])
+    y = df["Churn"]
+
+    return X, y
+
+
+def create_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
+    """Create preprocessing transformations for numerical and categorical features."""
+
+    numerical_columns = X.select_dtypes(
+        include=["int64", "float64"]
+    ).columns.tolist()
+
+    categorical_columns = X.select_dtypes(
+        include=["object", "str"]
+    ).columns.tolist()
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            (
+                "numerical",
+                StandardScaler(),
+                numerical_columns,
+            ),
+            (
+                "categorical",
+                OneHotEncoder(
+                    handle_unknown="ignore",
+                    sparse_output=False,
+                ),
+                categorical_columns,
+            ),
+        ]
     )
 
-    df["IsLongTermContract"] = (
-        df["Contract"] != "Month-to-month"
-    ).astype(int)
-
-    df["IsNewCustomer"] = (
-        df["tenure"] <= 12
-    ).astype(int)
-
-    df["HighMonthlyCharges"] = (
-        df["MonthlyCharges"] > 70
-    ).astype(int)
-
-    return df
+    return preprocessor
 
 
-def create_train_test_data(df):
-    """Prepare encoded train and test data."""
+def create_train_test_data():
+    """Split the dataset and fit preprocessing only on training data."""
 
-    df = create_features(df)
-
-    X = df.drop(columns=["customerID", "Churn"])
-    y = df["Churn"].map({"No": 0, "Yes": 1})
+    X, y = prepare_dataset()
 
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
-        test_size=0.2,
-        random_state=42,
-        stratify=y
+        test_size=TEST_SIZE,
+        stratify=y,
+        random_state=RANDOM_STATE,
     )
 
-    categorical = X_train.select_dtypes(
-        include=["object"]
-    ).columns
+    preprocessor = create_preprocessor(X_train)
 
-    encoder = OneHotEncoder(
-        handle_unknown="ignore",
-        sparse_output=False
+    X_train_processed = preprocessor.fit_transform(X_train)
+    X_test_processed = preprocessor.transform(X_test)
+
+    feature_names = preprocessor.get_feature_names_out()
+
+    X_train_processed = pd.DataFrame(
+        X_train_processed,
+        columns=feature_names,
+        index=X_train.index,
     )
 
-    train_encoded = encoder.fit_transform(
-        X_train[categorical]
+    X_test_processed = pd.DataFrame(
+        X_test_processed,
+        columns=feature_names,
+        index=X_test.index,
     )
 
-    test_encoded = encoder.transform(
-        X_test[categorical]
+    return (
+        X_train_processed,
+        X_test_processed,
+        y_train,
+        y_test,
+        preprocessor,
     )
 
-    train_numeric = X_train.drop(
-        columns=categorical
-    ).reset_index(drop=True)
 
-    test_numeric = X_test.drop(
-        columns=categorical
-    ).reset_index(drop=True)
+if __name__ == "__main__":
 
-    X_train = pd.concat(
-        [
-            train_numeric,
-            pd.DataFrame(train_encoded)
-        ],
-        axis=1
-    )
+    (
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        preprocessor,
+    ) = create_train_test_data()
 
-    X_test = pd.concat(
-        [
-            test_numeric,
-            pd.DataFrame(test_encoded)
-        ],
-        axis=1
-    )
+    print("Feature engineering completed successfully.")
+    print(f"Training rows: {X_train.shape[0]}")
+    print(f"Testing rows: {X_test.shape[0]}")
+    print(f"Training features: {X_train.shape[1]}")
+    print(f"Testing features: {X_test.shape[1]}")
 
-    return X_train, X_test, y_train, y_test
+    print("\nTarget distribution:")
+    print(y_train.value_counts())
+
+    print("\nFirst 5 processed training rows:")
+    print(X_train.head())
