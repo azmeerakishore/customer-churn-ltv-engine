@@ -1,4 +1,4 @@
-import io
+﻿import io
 from pathlib import Path
 from typing import Any, Literal
 
@@ -167,7 +167,7 @@ def input_schema():
         "default_model": default_model,
         "default_horizon_months": DEFAULT_HORIZON_MONTHS,
         "revenue_estimate_note": (
-            "Revenue at risk is churn probability × monthly charges × "
+            "Revenue at risk is churn probability ├ù monthly charges ├ù "
             "planning-horizon months. The horizon does not calibrate the "
             "churn score; this is not a full customer lifetime value forecast."
         ),
