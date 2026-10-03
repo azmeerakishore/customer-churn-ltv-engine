@@ -1,5 +1,5 @@
 const PAGE_SIZE = 25;
-const API_BASE_URL = 'https://customer-churn-ltv-engine.onrender.com';
+const API_BASE_URL = 'https://customer-churn-ltv-engine-vqo6.onrender.com';
 let schema;
 let scoredRecords = [];
 let currentPage = 0;
