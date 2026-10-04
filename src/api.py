@@ -23,7 +23,7 @@ from src.models.predict import (
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = PROJECT_ROOT / "web"
 MAX_CSV_BYTES = 10 * 1024 * 1024
-MAX_CUSTOMERS = 1000
+MAX_CUSTOMERS = 10000
 
 app = FastAPI(
     title="Customer Churn & Revenue Risk API",
@@ -37,6 +37,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://azmeerakishore.github.io",
+        "http://127.0.0.1:8000",
     ],
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
