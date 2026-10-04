@@ -123,4 +123,3 @@ if __name__ == "__main__":
         print(f"  ✓ {model_name}")
 
     print(f"\nModels saved to: {MODEL_DIR}")
-    

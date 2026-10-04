@@ -106,4 +106,3 @@ The workflow in `.github/workflows/pages.yml` publishes only `web/` when changes
 - The three risk bands are simple display thresholds, not business-optimized intervention cutoffs.
 - Revenue at risk is a planning scenario, not true CLV. A true lifetime-value model needs an observed future value or time-to-event target and a documented forecasting horizon.
 - The demo API has no authentication, persistence, or customer-data access controls. Do not expose it publicly with real customer data without adding those controls.
-

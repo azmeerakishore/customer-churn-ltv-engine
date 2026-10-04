@@ -1,6 +1,8 @@
-models/*.joblib
+venv/
 .venv/
-.pytest_cache/
 __pycache__/
 *.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+models/*.joblib
 .DS_Store
