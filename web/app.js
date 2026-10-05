@@ -1,5 +1,9 @@
 const PAGE_SIZE = 25;
-const API_BASE_URL = '';
+const API_BASE_URL =
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1'
+    ? ''
+    : 'https://customer-churn-ltv-engine-vqo6.onrender.com';
 let schema;
 let scoredRecords = [];
 let currentPage = 0;
