@@ -4,123 +4,273 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f2f4ef">
-    <title>Retention Studio | Customer Churn Engine</title>
+    <title>Retention Studio | Customer Churn &amp; LTV Engine</title>
     <link rel="stylesheet" href="./styles.css">
     <script src="./app.js" defer></script>
   </head>
+
   <body>
     <header class="topbar">
       <a class="brand" href="./" aria-label="Retention Studio home">
         <span class="brand-mark" aria-hidden="true">R</span>
         <span>retention<span class="brand-light">studio</span></span>
       </a>
+
       <div class="topbar-meta">
-        <span class="model-indicator" id="service-status"><span class="status-dot"></span>Checking model…</span>
+        <span class="model-indicator" id="service-status">
+          <span class="status-dot"></span>
+          Checking model…
+        </span>
+
         <a
           class="docs-link"
           href="https://customer-churn-ltv-engine-vqo6.onrender.com/docs"
           target="_blank"
           rel="noreferrer"
-        >API docs <span aria-hidden="true">↗</span></a>
+        >
+          API docs <span aria-hidden="true">↗</span>
+        </a>
       </div>
     </header>
 
+
     <main class="page-shell">
+
+      <!-- Page heading -->
       <section class="page-heading">
         <div>
           <p class="eyebrow">CUSTOMER ANALYTICS / 01</p>
+
           <h1>Churn intelligence</h1>
-          <p class="page-description">Score customer risk and size the recurring revenue exposure.</p>
+
+          <p class="page-description">
+            Score customer risk, estimate revenue exposure, and calculate
+            customer lifetime value.
+          </p>
         </div>
+
         <div class="heading-note">
           <span class="note-label">SCORING MODEL</span>
           <span id="active-model-label">Loading model…</span>
         </div>
       </section>
 
+
+      <!-- Summary metrics -->
       <section class="metrics" aria-label="Scoring summary">
+
         <article class="metric metric-primary">
           <span class="metric-label">Customers scored</span>
           <strong id="metric-count">—</strong>
-          <span class="metric-foot">In the current result set</span>
+          <span class="metric-foot">
+            In the current result set
+          </span>
         </article>
+
         <article class="metric">
           <span class="metric-label">High risk</span>
           <strong id="metric-high">—</strong>
-          <span class="metric-foot">Probability above ⅔</span>
+          <span class="metric-foot">
+            Probability above ⅔
+          </span>
         </article>
+
         <article class="metric metric-revenue">
           <span class="metric-label">Revenue at risk</span>
           <strong id="metric-revenue">—</strong>
-          <span class="metric-foot" id="metric-horizon">Weighted by selected horizon</span>
+          <span class="metric-foot" id="metric-horizon">
+            Weighted by selected horizon
+          </span>
         </article>
+
       </section>
 
+
+      <!-- Scoring controls -->
       <section class="control-bar" aria-label="Scoring settings">
+
         <label class="control-field">
           <span>Model</span>
-          <select id="model-select" aria-label="Scoring model"></select>
+          <select
+            id="model-select"
+            aria-label="Scoring model"
+          ></select>
         </label>
+
         <label class="control-field horizon-control">
           <span>Planning horizon</span>
-          <span class="input-suffix"><input id="horizon-input" type="number" min="1" max="120" value="12"><span>months</span></span>
+
+          <span class="input-suffix">
+            <input
+              id="horizon-input"
+              type="number"
+              min="1"
+              max="120"
+              value="12"
+            >
+            <span>months</span>
+          </span>
         </label>
+
         <div class="control-spacer"></div>
+
         <label class="upload-button" for="csv-file">
-          <span aria-hidden="true">↑</span> Score CSV
-          <input id="csv-file" type="file" accept=".csv,text/csv">
+          <span aria-hidden="true">↑</span>
+          Score CSV
+
+          <input
+            id="csv-file"
+            type="file"
+            accept=".csv,text/csv"
+          >
         </label>
+
       </section>
 
+
+      <!-- Main workspace -->
       <div class="workspace-grid">
-        <section class="tool-panel customer-panel" aria-labelledby="customer-title">
+
+        <!-- Customer profile -->
+        <section
+          class="tool-panel customer-panel"
+          aria-labelledby="customer-title"
+        >
+
           <div class="panel-heading">
             <div>
               <p class="eyebrow">INDIVIDUAL SCORING</p>
-              <h2 id="customer-title">Customer profile</h2>
+              <h2 id="customer-title">
+                Customer profile
+              </h2>
             </div>
+
             <span class="panel-index">01</span>
           </div>
+
+
           <form id="customer-form">
+
             <label class="field-control identifier-field">
-              <span>Customer ID <small>optional</small></span>
-              <input id="customer-id" type="text" maxlength="64" placeholder="e.g. 7590-VHVEG">
+              <span>
+                Customer ID
+                <small>optional</small>
+              </span>
+
+              <input
+                id="customer-id"
+                type="text"
+                maxlength="64"
+                placeholder="e.g. 7590-VHVEG"
+              >
             </label>
+
+
             <div class="field-section">
               <h3>Account economics</h3>
-              <div class="field-grid numeric-fields" id="numeric-fields"></div>
+
+              <div
+                class="field-grid numeric-fields"
+                id="numeric-fields"
+              ></div>
             </div>
+
+
             <div class="field-section">
               <h3>Services &amp; contract</h3>
-              <div class="field-grid categorical-fields" id="categorical-fields"></div>
+
+              <div
+                class="field-grid categorical-fields"
+                id="categorical-fields"
+              ></div>
             </div>
+
+
             <div class="form-footer">
-              <p id="form-message" class="form-message" role="status"></p>
-              <button class="primary-button" type="submit">Score customer <span aria-hidden="true">→</span></button>
+
+              <p
+                id="form-message"
+                class="form-message"
+                role="status"
+              ></p>
+
+              <button
+                class="primary-button"
+                type="submit"
+              >
+                Score customer
+                <span aria-hidden="true">→</span>
+              </button>
+
             </div>
+
           </form>
+
         </section>
 
-        <section class="tool-panel results-panel" aria-labelledby="results-title">
+
+        <!-- Results -->
+        <section
+          class="tool-panel results-panel"
+          aria-labelledby="results-title"
+        >
+
           <div class="panel-heading results-heading">
+
             <div>
               <p class="eyebrow">PORTFOLIO VIEW</p>
-              <h2 id="results-title">Scoring results</h2>
+
+              <h2 id="results-title">
+                Scoring results
+              </h2>
             </div>
+
             <label class="search-box">
               <span aria-hidden="true">⌕</span>
-              <input id="result-search" type="search" placeholder="Find customer" aria-label="Filter results">
+
+              <input
+                id="result-search"
+                type="search"
+                placeholder="Find customer"
+                aria-label="Filter results"
+              >
             </label>
+
           </div>
-          <div class="result-notice" id="result-notice">
-            <span class="notice-mark" aria-hidden="true">↗</span>
+
+
+          <!-- Initial notice -->
+          <div
+            class="result-notice"
+            id="result-notice"
+          >
+            <span
+              class="notice-mark"
+              aria-hidden="true"
+            >
+              ↗
+            </span>
+
             <div>
               <strong>Ready to score</strong>
-              <p>Enter a profile or choose a customer CSV to see the risk ranking.</p>
+
+              <p>
+                Enter a profile or choose a customer CSV
+                to see the risk ranking.
+              </p>
             </div>
           </div>
-          <div class="table-wrap" id="table-wrap" hidden>
+
+
+          <!-- Results table -->
+          <div
+            class="table-wrap"
+            id="table-wrap"
+            hidden
+          >
+
             <table>
+
               <thead>
                 <tr>
                   <th>Customer</th>
@@ -128,26 +278,89 @@
                   <th>Risk</th>
                   <th>Monthly</th>
                   <th>Revenue at risk</th>
+                  <th>Estimated LTV</th>
                 </tr>
               </thead>
+
               <tbody id="results-body"></tbody>
+
             </table>
-            <p class="table-footnote" id="table-footnote"></p>
+
+
+            <p
+              class="table-footnote"
+              id="table-footnote"
+            ></p>
+
+
             <div class="pagination">
+
               <span id="page-label">—</span>
+
               <div>
-                <button id="previous-page" type="button" aria-label="Previous results page" title="Previous page">←</button>
-                <button id="next-page" type="button" aria-label="Next results page" title="Next page">→</button>
+
+                <button
+                  id="previous-page"
+                  type="button"
+                  aria-label="Previous results page"
+                  title="Previous page"
+                >
+                  ←
+                </button>
+
+                <button
+                  id="next-page"
+                  type="button"
+                  aria-label="Next results page"
+                  title="Next page"
+                >
+                  →
+                </button>
+
               </div>
+
             </div>
+
           </div>
+
+
+          <!-- Model explanation -->
           <div class="model-note">
-            <span class="model-note-mark" aria-hidden="true">i</span>
-            <p>Revenue at risk = churn probability × monthly charges × planning horizon. The horizon does not calibrate the churn score; this is not a full customer lifetime value forecast.</p>
+
+            <span
+              class="model-note-mark"
+              aria-hidden="true"
+            >
+              i
+            </span>
+
+            <p>
+              Revenue at risk = churn probability × monthly
+              charges × planning horizon. Estimated LTV is a
+              formula-based lifetime-value estimate using
+              monthly charges, tenure, and churn probability.
+              It is not a separately trained LTV regression model.
+            </p>
+
           </div>
+
         </section>
+
       </div>
-      <footer class="page-footer"><span>Customer Churn Prediction &amp; LTV Engine</span><span>Scores are decision support, not guarantees.</span></footer>
+
+
+      <!-- Footer -->
+      <footer class="page-footer">
+        <span>
+          Customer Churn Prediction &amp; LTV Engine
+        </span>
+
+        <span>
+          Scores are decision support, not guarantees.
+        </span>
+      </footer>
+
     </main>
+
   </body>
 </html>

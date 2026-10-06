@@ -4,10 +4,14 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from src.models.ltv import calculate_ltv
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MODEL_DIR = PROJECT_ROOT / "models"
+
 DEFAULT_MODEL_NAME = "logistic_regression"
+
 AVAILABLE_MODELS = {
     "logistic_regression",
     "random_forest",
@@ -15,11 +19,13 @@ AVAILABLE_MODELS = {
     "logistic_regression_tuned",
     "random_forest_tuned",
 }
+
 DEFAULT_HORIZON_MONTHS = 12
 
 
 def load_artifacts(model_name: str = DEFAULT_MODEL_NAME):
     """Load a saved classifier and the matching fitted preprocessor."""
+
     if model_name not in AVAILABLE_MODELS:
         raise ValueError(
             f"Unknown model '{model_name}'. Choose one of: "
@@ -28,9 +34,13 @@ def load_artifacts(model_name: str = DEFAULT_MODEL_NAME):
 
     model_path = MODEL_DIR / f"{model_name}.joblib"
     preprocessor_path = MODEL_DIR / "preprocessor.joblib"
+
     missing_paths = [
-        path for path in (model_path, preprocessor_path) if not path.is_file()
+        path
+        for path in (model_path, preprocessor_path)
+        if not path.is_file()
     ]
+
     if missing_paths:
         raise FileNotFoundError(
             "Required model artifacts are missing: "
@@ -47,17 +57,37 @@ def score_customers(
     model=None,
     preprocessor=None,
 ) -> pd.DataFrame:
-    """Score customers and estimate horizon-based revenue at risk."""
+    """Score customers and estimate churn, revenue at risk, and LTV."""
+
+    # ---------------------------------------------------------
+    # Basic validation
+    # ---------------------------------------------------------
+
     if customers.empty:
         raise ValueError("At least one customer record is required.")
+
     if not isinstance(horizon_months, int) or not 1 <= horizon_months <= 120:
-        raise ValueError("horizon_months must be an integer from 1 to 120.")
+        raise ValueError(
+            "horizon_months must be an integer from 1 to 120."
+        )
+
+    # ---------------------------------------------------------
+    # Load model and preprocessor
+    # ---------------------------------------------------------
 
     if model is None or preprocessor is None:
         model, preprocessor = load_artifacts(model_name)
 
+    # ---------------------------------------------------------
+    # Check required columns
+    # ---------------------------------------------------------
+
     expected_columns = list(preprocessor.feature_names_in_)
-    missing_columns = sorted(set(expected_columns) - set(customers.columns))
+
+    missing_columns = sorted(
+        set(expected_columns) - set(customers.columns)
+    )
+
     if missing_columns:
         raise ValueError(
             "Customer data is missing required columns: "
@@ -65,55 +95,185 @@ def score_customers(
         )
 
     features = customers.loc[:, expected_columns].copy()
+
+    # ---------------------------------------------------------
+    # Numeric validation
+    # ---------------------------------------------------------
+
     numerical_columns = preprocessor.transformers_[0][2]
+
     for column in numerical_columns:
         original_values = features[column]
-        converted_values = pd.to_numeric(original_values, errors="coerce")
+
+        converted_values = pd.to_numeric(
+            original_values,
+            errors="coerce",
+        )
+
         invalid_values = (
             original_values.notna()
             & original_values.astype(str).str.strip().ne("")
             & converted_values.isna()
         )
+
         if invalid_values.any():
-            raise ValueError(f"{column} must contain valid numbers.")
+            raise ValueError(
+                f"{column} must contain valid numbers."
+            )
+
         features[column] = converted_values
+
+    # TotalCharges blank values become 0
     features["TotalCharges"] = features["TotalCharges"].fillna(0)
 
+    # ---------------------------------------------------------
+    # Missing value validation
+    # ---------------------------------------------------------
+
     if features.isna().any().any():
-        raise ValueError("Customer fields cannot be empty.")
+        raise ValueError(
+            "Customer fields cannot be empty."
+        )
+
     if features[numerical_columns].isna().any().any():
-        raise ValueError("Numeric customer fields must contain valid numbers.")
-    if not np.isfinite(features[numerical_columns].to_numpy()).all():
-        raise ValueError("Numeric customer fields must be finite numbers.")
+        raise ValueError(
+            "Numeric customer fields must contain valid numbers."
+        )
+
+    # ---------------------------------------------------------
+    # Finite number validation
+    # ---------------------------------------------------------
+
+    if not np.isfinite(
+        features[numerical_columns].to_numpy()
+    ).all():
+        raise ValueError(
+            "Numeric customer fields must be finite numbers."
+        )
+
+    # ---------------------------------------------------------
+    # SeniorCitizen validation
+    # ---------------------------------------------------------
+
     if not features["SeniorCitizen"].isin([0, 1]).all():
-        raise ValueError("SeniorCitizen must be 0 or 1.")
-    for column in ("tenure", "MonthlyCharges", "TotalCharges"):
+        raise ValueError(
+            "SeniorCitizen must be 0 or 1."
+        )
+
+    # ---------------------------------------------------------
+    # Negative value validation
+    # ---------------------------------------------------------
+
+    for column in (
+        "tenure",
+        "MonthlyCharges",
+        "TotalCharges",
+    ):
         if (features[column] < 0).any():
-            raise ValueError(f"{column} cannot be negative.")
+            raise ValueError(
+                f"{column} cannot be negative."
+            )
+
+    # ---------------------------------------------------------
+    # Categorical validation
+    # ---------------------------------------------------------
+
     categorical_columns = preprocessor.transformers_[1][2]
+
     for column in categorical_columns:
         if features[column].astype(str).str.strip().eq("").any():
-            raise ValueError(f"{column} cannot be empty.")
+            raise ValueError(
+                f"{column} cannot be empty."
+            )
+
+    # ---------------------------------------------------------
+    # Preprocess customer data
+    # ---------------------------------------------------------
 
     processed = pd.DataFrame(
         preprocessor.transform(features),
         columns=preprocessor.get_feature_names_out(),
         index=features.index,
     )
+
+    # ---------------------------------------------------------
+    # Churn prediction
+    # ---------------------------------------------------------
+
     probabilities = model.predict_proba(processed)[:, 1]
 
+    # ---------------------------------------------------------
+    # Create result dataframe
+    # ---------------------------------------------------------
+
     result = pd.DataFrame(index=customers.index)
+
     if "customerID" in customers.columns:
         result["customerID"] = customers["customerID"]
+
     result["churn_probability"] = probabilities
+
+    # ---------------------------------------------------------
+    # Risk category
+    # ---------------------------------------------------------
+
     result["risk_category"] = pd.cut(
         probabilities,
-        bins=[-0.001, 1 / 3, 2 / 3, 1.001],
-        labels=["Low", "Medium", "High"],
+        bins=[
+            -0.001,
+            1 / 3,
+            2 / 3,
+            1.001,
+        ],
+        labels=[
+            "Low",
+            "Medium",
+            "High",
+        ],
     ).astype(str)
+
+    # ---------------------------------------------------------
+    # Monthly charges
+    # ---------------------------------------------------------
+
     result["monthly_charges"] = features["MonthlyCharges"]
+
+    # ---------------------------------------------------------
+    # Revenue at risk
+    # ---------------------------------------------------------
+
     result["revenue_at_risk"] = (
-        probabilities * features["MonthlyCharges"] * horizon_months
+        probabilities
+        * features["MonthlyCharges"]
+        * horizon_months
     )
+
+    # ---------------------------------------------------------
+    # Estimated Customer Lifetime Value
+    # ---------------------------------------------------------
+    #
+    # This is a formula-based LTV estimate.
+    # It is NOT a separately trained regression model.
+    #
+
+    result["estimated_ltv"] = [
+        calculate_ltv(
+            monthly_charges,
+            tenure,
+            churn_probability,
+            horizon_months,
+        )
+        for monthly_charges, tenure, churn_probability in zip(
+            features["MonthlyCharges"],
+            features["tenure"],
+            probabilities,
+        )
+    ]
+
+    # ---------------------------------------------------------
+    # Prediction horizon
+    # ---------------------------------------------------------
+
     result["horizon_months"] = horizon_months
+
     return result.reset_index(drop=True)
