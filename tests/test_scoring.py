@@ -135,17 +135,41 @@ def test_csv_api_scores_batch(model_bundle, monkeypatch):
         )
 
     monkeypatch.setattr(api, "score_customers", score_with_test_model)
-    csv_content = load_data().head(2).drop(columns="Churn").to_csv(index=False)
+
+    csv_content = (
+        load_data()
+        .head(2)
+        .drop(columns="Churn")
+        .to_csv(index=False)
+    )
 
     response = api_request(
         "POST",
         "/api/score-csv?horizon_months=9",
-        content=csv_content,
-        headers={"Content-Type": "text/csv"},
+        files={
+            "file": (
+                "customers.csv",
+                csv_content.encode("utf-8"),
+                "text/csv",
+            )
+        },
     )
 
     assert response.status_code == 200
-    assert response.json()["count"] == 2
+
+    data = response.json()
+
+    assert data["count"] == 2
+    assert "records" in data
+    assert len(data["records"]) == 2
+
+    for record in data["records"]:
+        assert "customerID" in record
+        assert "churn_probability" in record
+        assert "risk_category" in record
+        assert "revenue_at_risk" in record
+        assert "estimated_ltv" in record
+        assert record["horizon_months"] == 9
 
 
 def test_empty_csv_is_rejected():
@@ -173,8 +197,13 @@ def test_csv_api_rejects_oversized_request_body():
     response = api_request(
         "POST",
         "/api/score-csv",
-        content=b"x" * (api.MAX_CSV_BYTES + 1),
-        headers={"Content-Type": "text/csv"},
+        files={
+            "file": (
+                "large.csv",
+                b"x" * (api.MAX_CSV_BYTES + 1),
+                "text/csv",
+            )
+        },
     )
 
     assert response.status_code == 413
@@ -182,14 +211,22 @@ def test_csv_api_rejects_oversized_request_body():
 
 def test_csv_api_rejects_batches_above_customer_limit():
     customer = load_data().head(1).drop(columns="Churn")
-    customers = pd.concat([customer] * (api.MAX_CUSTOMERS + 1), ignore_index=True)
+    customers = pd.concat(
+        [customer] * (api.MAX_CUSTOMERS + 1),
+        ignore_index=True,
+    )
     csv_content = customers.to_csv(index=False)
 
     response = api_request(
         "POST",
         "/api/score-csv",
-        content=csv_content,
-        headers={"Content-Type": "text/csv"},
+        files={
+            "file": (
+                "large_batch.csv",
+                csv_content.encode("utf-8"),
+                "text/csv",
+            )
+        },
     )
 
     assert response.status_code == 413

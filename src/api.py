@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from pydantic import ValidationError
+from fastapi import File, UploadFile
 
 from src.models.predict import (
     AVAILABLE_MODELS,
@@ -205,16 +206,18 @@ async def score(request: Request):
 
 @app.post("/api/score-csv")
 async def score_csv(
-    request: Request,
+    file: UploadFile = File(...),
     horizon_months: int = Query(default=DEFAULT_HORIZON_MONTHS, ge=1, le=120),
     model_name: str = Query(default=DEFAULT_MODEL_NAME),
 ):
     if model_name not in AVAILABLE_MODELS:
         raise HTTPException(status_code=422, detail="Unknown model name.")
 
-    body = await _read_limited_body(request)
+    body = await file.read()
+
     if not body:
         raise HTTPException(status_code=422, detail="CSV file is empty.")
+
     if len(body) > MAX_CSV_BYTES:
         raise HTTPException(status_code=413, detail="CSV file exceeds 10 MB.")
 
@@ -229,11 +232,13 @@ async def score_csv(
             status_code=422,
             detail="Could not parse the uploaded file as CSV.",
         ) from error
+
     if len(customers) > MAX_CUSTOMERS:
         raise HTTPException(
             status_code=413,
             detail=f"CSV batch exceeds the {MAX_CUSTOMERS}-customer limit.",
         )
+
     return _score(customers, horizon_months, model_name)
 
 
