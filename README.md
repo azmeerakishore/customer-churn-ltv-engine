@@ -34,16 +34,16 @@ Training writes model files under `models/`. They are gitignored because they ca
 
 1. Select an installed model and planning horizon.
 2. Enter a customer profile and choose **Score customer**, or select a CSV with the source dataset's feature columns.
-3. Review churn probability, risk category, monthly charges, and estimated revenue at risk.
+3. Review churn probability, risk category, monthly charges, revenue at risk, and estimated LTV.
 
-The raw CSV in `data/WA_Fn-UseC_-Telco-Customer-Churn.csv` is available for a portfolio demonstration. The `Churn` target column is ignored during scoring; `customerID` is optional. Scoring request bodies are limited to 10 MB and batches to 1,000 customers.
+The raw CSV in `data/WA_Fn-UseC_-Telco-Customer-Churn.csv` is available for a portfolio demonstration. The `Churn` target column is ignored during scoring; `customerID` is optional. Scoring request bodies are limited to 10 MB and CSV batches to 10,000 customers.
 
 ## API
 
 - `GET /health` reports whether the default model artifacts are present.
 - `GET /api/schema` describes required fields, category options, installed models, and estimate assumptions.
 - `POST /api/score` scores one or more JSON customer records.
-- `POST /api/score-csv?horizon_months=12` accepts a raw CSV request body.
+- `POST /api/score-csv?horizon_months=12` accepts a CSV file upload.
 - `GET /docs` provides interactive Swagger documentation.
 
 The preprocessor is fitted only on the training split and reused for inference. Unknown categorical values are handled by the fitted one-hot encoder; required columns and numeric values are validated before scoring. Risk probability is model output and has not been calibrated for a specific time horizon.
@@ -90,11 +90,11 @@ docker build -t customer-churn-ltv-engine .
 docker run --rm -p 8000:8000 customer-churn-ltv-engine
 ```
 
-The container installs the declared dependencies, trains the baseline models from the included dataset, and serves the dashboard/API on port 8000 (or the `PORT` environment variable). This repository contains deployment configuration only; it has not been deployed to a hosting provider.
+The container installs the declared dependencies, trains the baseline models from the included dataset, and serves the dashboard/API on port 8000 (or the `PORT` environment variable). The project is deployed with the backend hosted on Render and the frontend dashboard published through GitHub Pages. The Render service provides the FastAPI backend and model inference, while the GitHub Pages site provides the web dashboard.
 
 ### Deploying To Render
 
-The repository includes a Render Blueprint in `render.yaml`. To create the service, sign in to Render, choose **New + → Blueprint**, connect this GitHub repository, and deploy the `kishore-development` branch. Render builds the Docker image, trains the baseline artifacts during the image build, and checks `/health` after startup. The first build can take several minutes. A successful configuration does not mean the service is deployed; verify the service status and open the Render-provided URL after deployment.
+The repository includes a Render Blueprint in `render.yaml`. To create the service, sign in to Render, choose **New + → Blueprint**, connect this GitHub repository and deploy the `main` branch. Render builds the Docker image, trains the baseline artifacts during the image build, and checks `/health` after  startup. The first build can take several minutes. A successful configuration does not mean the service is deployed; verify the service status and open the Render-provided URL after deployment.
 
 ### Deploying The Dashboard To GitHub Pages
 
