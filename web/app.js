@@ -199,14 +199,14 @@ async function scoreCsv(file) {
     horizon_months: elements.horizon.value,
   });
 
+  const formData = new FormData();
+  formData.append('file', file);
+
   const response = await fetch(
     `${apiUrl('/api/score-csv')}?${query}`,
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'text/csv',
-      },
-      body: file,
+      body: formData,
     },
   );
 
